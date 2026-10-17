@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>证件照工具</title>
+<style>
+  :root {
+    --bg: #f7f9fc;
+    --surface: #ffffff;
+    --surface2: #f0f4fa;
+    --border: #e6ebf2;
+    --text: #2c3340;
+    --muted: #8b95a8;
+    --primary: #5b8def;
+    --accent: #5ec4b0;
+    --accent-soft: #e6f7f3;
+    --warn-soft: #fff4e8;
+    --warn: #d4892a;
+    --danger-soft: #ffecec;
+    --danger: #d45b5b;
+    --radius: 18px;
+    --shadow: 0 8px 24px rgba(91, 141, 239, 0.08);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    background: linear-gradient(180deg, #eef5ff 0%, #f7f9fc 45%, #fff6f9 100%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+    overscroll-behavior: none;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 14px 14px calc(14px + var(--safe-b));
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  header h1 { font-size: 18px; font-weight: 700; color: #3d4a63; }
+  header .badge {
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid #c8ebe3;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  header .badge.bad {
+    color: var(--danger);
+    background: var(--danger-soft);
+    border-color: #f5c8c8;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text);
+    background: var(--surface2);
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.45; pointer-events: none; }
+  .btn-primary { background: linear-gradient(135deg, #6a9af5, #5b8def); color: #fff; }
+  .btn-accent { background: var(--accent-soft); color: #2f9e8c; border: 1px solid #c8ebe3; }
+  .btn-warn { background: var(--warn-soft); color: var(--warn); border: 1px solid #f5d7b0; }
+  .btn-danger { background: var(--danger-soft); color: var(--danger); border: 1px solid #f5c8c8; }
+  .btn-ghost { background: #fff; border: 1px solid var(--border); color: var(--muted); }
+  .btn-pink { background: #fff0f6; color: #d66b95; border: 1px solid #f5c9db; }
+  .btn.active { outline: 2px solid var(--primary); outline-offset: 1px; }
+  .btn-block { width: 100%; margin-top: 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .row > .btn, .row > select { flex: 1; min-width: 0; }
+  select, input[type="range"], input[type="color"] {
+    height: 44px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    padding: 0 12px;
+    font-size: 14px;
+  }
+  input[type="color"] { width: 48px; padding: 4px; flex: 0 0 auto; }
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    padding: 0;
+    background: #e8eef8;
+    border: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid #fff;
+  }
+  #canvas-wrap {
+    width: 100%;
+    max-width: 100%;
+    background: #f5f8fc;
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 220px;
+    border: 1px solid var(--border);
+    position: relative;
+    touch-action: pan-y;
+  }
+  #canvas-wrap.editable {
+    touch-action: none;
+    box-shadow: inset 0 0 0 2px rgba(91,141,239,0.35);
+  }
+  #canvas-wrap canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 70vh;
+    width: auto !important;
+    height: auto !important;
+    background: #fff;
+    vertical-align: top;
+  }
+  .canvas-lock {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.92);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .meta { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .tip {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: #f3f7ff;
+    border: 1px solid #d9e6ff;
+    color: #5a6f96;
+    font-size: 12px;
+    line-height: 1.45;
+    text-align: left;
+  }
+  #status {
+    display: none;
+    text-align: center;
+    padding: 10px 12px;
+    border-radius: 14px;
+    font-size: 13px;
+    margin-bottom: 10px;
+    word-break: break-all;
+  }
+  .loading { display: block; background: var(--warn-soft); color: var(--warn); border: 1px solid #f5d7b0; }
+  .success { display: block; background: var(--accent-soft); color: #2f9e8c; border: 1px solid #c8ebe3; }
+  .error { display: block; background: var(--danger-soft); color: var(--danger); border: 1px solid #f5c8c8; }
+  .progress-wrap { display: none; margin-bottom: 10px; }
+  .progress-bar { height: 8px; border-radius: 999px; background: #e8eef8; overflow: hidden; }
+  .progress-inner {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6a9af5, #5ec4b0);
+    transition: width 0.2s ease;
+  }
+  .progress-text { text-align: center; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .slider-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .slider-row label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .slider-row span { font-size: 13px; width: 28px; text-align: right; }
+  .bottom { margin-top: auto; padding-top: 6px; }
+  #refinePanel { display: none; }
+  #refinePanel.show { display: block; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>证件照小工具</h1>
+    <span class="badge" id="modelBadge">就绪</span>
+  </header>
+
+  <div id="status"></div>
+  <div class="progress-wrap" id="progressContainer">
+    <div class="progress-bar"><div class="progress-inner" id="progressInner"></div></div>
+    <div class="progress-text" id="progressText">0%</div>
+  </div>
+
+  <div class="card">
+    <input type="file" id="uploadAlbum" accept="image/*" style="display:none">
+    <input type="file" id="uploadCamera" accept="image/*" capture="environment" style="display:none">
+    <div class="row">
+      <button class="btn btn-primary" onclick="document.getElementById('uploadAlbum').click()">相册</button>
+      <button class="btn btn-pink" onclick="document.getElementById('uploadCamera').click()">拍照</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn btn-warn" id="processBtn" onclick="processCurrent(false)" disabled>一键抠图</button>
+      <button class="btn btn-accent" id="refineBtn" onclick="toggleRefine()" disabled>手动精修</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn btn-ghost" id="aiForceBtn" onclick="processCurrent(true)" disabled>强制AI精抠</button>
+    </div>
+    <div class="tip">提示：若边缘、衣物抠得不理想，可点「手动精修」，用擦除 / 恢复 / 去色边微调。</div>
+  </div>
+
+  <div class="card">
+    <div class="meta" id="sizeInfo">1寸 · 295×413</div>
+    <div id="canvas-wrap">
+      <canvas id="canvas"></canvas>
+      <div class="canvas-lock" id="canvasLock">构图已锁定</div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn btn-ghost" id="editPoseBtn" onclick="toggleEditPose()">调整构图</button>
+      <button class="btn btn-ghost" onclick="resetCrop()">复位</button>
+    </div>
+  </div>
+
+  <div class="card" id="refinePanel">
+    <div class="meta">精修模式 · 擦除多余背景，恢复误抠区域，去色边清边缘</div>
+    <div class="seg" style="margin-top:8px">
+      <button class="btn btn-danger active" id="toolErase" onclick="setRefineTool('erase')">擦除</button>
+      <button class="btn" id="toolRestore" onclick="setRefineTool('restore')">恢复</button>
+      <button class="btn" id="toolDespill" onclick="setRefineTool('despill')">去色边</button>
+    </div>
+    <div class="slider-row">
+      <label>笔刷</label>
+      <input type="range" id="brushSize" min="2" max="120" value="16" step="1">
+      <span id="brushValue">16</span>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="toggleRefine()">完成精修</button>
+  </div>
+
+  <div class="card" id="normalPanel">
+    <div class="row" style="margin-bottom:8px">
+      <select id="sizeSelect" onchange="changeSize()">
+        <option value="1c">1寸 25×35mm</option>
+        <option value="2c">2寸 35×49mm</option>
+        <option value="x2c">小2寸 35×45mm</option>
+        <option value="d1c">大1寸 33×48mm</option>
+        <option value="passport">护照</option>
+        <option value="visa">签证</option>
+      </select>
+    </div>
+    <div class="row" style="margin-bottom:8px">
+      <select id="paperSelect" onchange="updatePaperInfo()">
+        <option value="a4">A4 210×297mm</option>
+        <option value="5c">5寸 89×127mm</option>
+        <option value="6c">6寸 102×152mm</option>
+        <option value="7c">7寸 127×178mm</option>
+        <option value="a5">A5 148×210mm</option>
+      </select>
+    </div>
+    <div class="meta" id="paperInfo">预计可排 8 张</div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" onclick="setBg('#ffffff')">白底</button>
+      <button class="btn" onclick="setBg('#04b5f0')">亮蓝</button>
+      <button class="btn" onclick="setBg('#218ad7')">深蓝</button>
+      <button class="btn" onclick="setBg('#ed0c0b')">纯红</button>
+      <button class="btn" onclick="setBg('#950e11')">深红</button>
+      <input type="color" id="customBg" value="#ffffff" onchange="setBg(this.value)">
+    </div>
+    <div class="slider-row">
+      <label>美颜</label>
+      <input type="range" id="beautyLevel" min="0" max="100" value="0">
+      <span id="beautyValue">0</span>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="card" style="margin-bottom:0">
+      <button class="btn btn-primary btn-block" onclick="downloadCurrent()">下载证件照</button>
+      <button class="btn btn-block" onclick="generatePrintSheet()">按相纸排版下载</button>
+    </div>
+  </div>
+
+<script type="module">
+  import { removeBackground } from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
+
+  const MODEL = "isnet_quint8";
+  const PUBLIC_PATH = "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/";
+  const PREVIEW_SIDE = 1400;
+  const AI_SIDES = [1024, 768, 640];
+
+  let currentFile = null;
+  let cleanCutout = null;
+  let workCanvas = null;
+  let workCtx = null;
+  let sourceCanvas = null;
+  let objectUrls = [];
+
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const sizeSelect = document.getElementById("sizeSelect");
+  const paperSelect = document.getElementById("paperSelect");
+  const sizeInfo = document.getElementById("sizeInfo");
+  const paperInfo = document.getElementById("paperInfo");
+  const statusEl = document.getElementById("status");
+  const processBtn = document.getElementById("processBtn");
+  const refineBtn = document.getElementById("refineBtn");
+  const aiForceBtn = document.getElementById("aiForceBtn");
+  const beautyLevel = document.getElementById("beautyLevel");
+  const beautyValue = document.getElementById("beautyValue");
+  const progressContainer = document.getElementById("progressContainer");
+  const progressInner = document.getElementById("progressInner");
+  const progressText = document.getElementById("progressText");
+  const refinePanel = document.getElementById("refinePanel");
+  const normalPanel = document.getElementById("normalPanel");
+  const brushSize = document.getElementById("brushSize");
+  const brushValue = document.getElementById("brushValue");
+  const wrap = document.getElementById("canvas-wrap");
+  const editPoseBtn = document.getElementById("editPoseBtn");
+  const canvasLock = document.getElementById("canvasLock");
+  const modelBadge = document.getElementById("modelBadge");
+
+  const sizes = {
+    "1c": { w: 295, h: 413, name: "1寸", mmW: 25, mmH: 35 },
+    "2c": { w: 413, h: 579, name: "2寸", mmW: 35, mmH: 49 },
+    "x2c": { w: 413, h: 531, name: "小2寸", mmW: 35, mmH: 45 },
+    "d1c": { w: 390, h: 567, name: "大1寸", mmW: 33, mmH: 48 },
+    "passport": { w: 390, h: 567, name: "护照", mmW: 33, mmH: 48 },
+    "visa": { w: 413, h: 531, name: "签证", mmW: 35, mmH: 45 }
+  };
+  const papers = {
+    "a4": { w: 210, h: 297, name: "A4" },
+    "5c": { w: 89, h: 127, name: "5寸" },
+    "6c": { w: 102, h: 152, name: "6寸" },
+    "7c": { w: 127, h: 178, name: "7寸" },
+    "a5": { w: 148, h: 210, name: "A5" }
+  };
+
+  let currentImg = null;
+  let bgColor = "#ffffff";
+  let crop = { x: 0, y: 0, scale: 1 };
+  let isDragging = false;
+  let lastTouch = null;
+  let lastDist = 0;
+  let currentSize = sizes["1c"];
+  let isProcessing = false;
+  let refineMode = false;
+  let refineTool = "erase";
+  let isPainting = false;
+  let editPose = false;
+
+  brushSize.oninput = () => { brushValue.textContent = brushSize.value; };
+  let beautyTimer = null;
+  beautyLevel.oninput = () => {
+    beautyValue.textContent = beautyLevel.value;
+    clearTimeout(beautyTimer);
+    beautyTimer = setTimeout(() => applyBeautyRealtime(+beautyLevel.value), 40);
+  };
+
+  function trackUrl(url) {
+    objectUrls.push(url);
+    return url;
+  }
+  function clearUrls() {
+    while (objectUrls.length) {
+      try { URL.revokeObjectURL(objectUrls.pop()); } catch (_) {}
+    }
+  }
+
+  function showStatus(msg, type) {
+    statusEl.innerHTML = msg;
+    statusEl.className = type;
+  }
+  function hideStatus() {
+    statusEl.style.display = "none";
+    statusEl.className = "";
+  }
+  function showProgress(percent, text) {
+    progressContainer.style.display = "block";
+    progressInner.style.width = percent + "%";
+    progressText.textContent = text || (percent + "%");
+  }
+  function hideProgress() {
+    progressContainer.style.display = "none";
+  }
+
+  function modelConfig() {
+    return {
+      model: MODEL,
+      device: "cpu",
+      publicPath: PUBLIC_PATH,
+      debug: false,
+      proxyToWorker: false,
+      rescale: true,
+      fetchArgs: { mode: "cors", credentials: "omit" }
+    };
+  }
+
+  function fitCanvasDisplay() {
+    const maxW = Math.min(360, wrap.clientWidth || (window.innerWidth - 48));
+    const scale = maxW / currentSize.w;
+    canvas.style.width = Math.round(currentSize.w * scale) + "px";
+    canvas.style.height = Math.round(currentSize.h * scale) + "px";
+  }
+
+  async function imageToPngFile(img, maxSide) {
+    const ratio = Math.min(1, maxSide / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * ratio));
+    const h = Math.max(1, Math.round(img.height * ratio));
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const t = c.getContext("2d");
+    t.imageSmoothingEnabled = true;
+    t.imageSmoothingQuality = "high";
+    t.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise(r => c.toBlob(r, "image/png"));
+    const out = new Image();
+    out.src = trackUrl(URL.createObjectURL(blob));
+    await new Promise((resolve, reject) => { out.onload = resolve; out.onerror = reject; });
+    return { img: out, file: new File([blob], "photo.png", { type: "image/png" }) };
+  }
+
+  async function loadImageFromFile(file) {
+    const img = new Image();
+    img.src = trackUrl(URL.createObjectURL(file));
+    await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+    return img;
+  }
+
+  async function blobToImage(blob) {
+    const img = new Image();
+    img.src = trackUrl(URL.createObjectURL(blob));
+    await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+    return img;
+  }
+
+  function canvasFromImage(img) {
+    const c = document.createElement("canvas");
+    c.width = img.width;
+    c.height = img.height;
+    c.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0);
+    return c;
+  }
+
+  function canvasToImage(c) {
+    return new Promise(resolve => {
+      c.toBlob(async blob => resolve(await blobToImage(blob)), "image/png");
+    });
+  }
+
+  function blurAlpha(alpha, w, h, passes = 1) {
+    let src = alpha;
+    let dst = new Float32Array(w * h);
+    for (let p = 0; p < passes; p++) {
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          let sum = 0, cnt = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            const yy = y + dy;
+            if (yy < 0 || yy >= h) continue;
+            for (let dx = -1; dx <= 1; dx++) {
+              const xx = x + dx;
+              if (xx < 0 || xx >= w) continue;
+              sum += src[yy * w + xx];
+              cnt++;
+            }
+          }
+          dst[y * w + x] = sum / cnt;
+        }
+      }
+      [src, dst] = [dst, src];
+    }
+    return src;
+  }
+
+  function erodeAlpha(alpha, w, h, radius = 1) {
+    const out = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let minV = 255;
+        for (let dy = -radius; dy <= radius; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) { minV = 0; continue; }
+          for (let dx = -radius; dx <= radius; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) { minV = 0; continue; }
+            const v = alpha[yy * w + xx];
+            if (v < minV) minV = v;
+          }
+        }
+        out[y * w + x] = minV;
+      }
+    }
+    return out;
+  }
+
+  function dilateAlpha(alpha, w, h, radius = 1) {
+    const out = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let maxV = 0;
+        for (let dy = -radius; dy <= radius; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -radius; dx <= radius; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) continue;
+            const v = alpha[yy * w + xx];
+            if (v > maxV) maxV = v;
+          }
+        }
+        out[y * w + x] = maxV;
+      }
+    }
+    return out;
+  }
+
+  function openAlpha(alpha, w, h, radius = 1) {
+    return dilateAlpha(erodeAlpha(alpha, w, h, radius), w, h, radius);
+  }
+
+  function guidedSmoothAlpha(alpha, gray, w, h, radius = 2, eps = 80) {
+    const out = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const a0 = alpha[y * w + x];
+        if (a0 < 8 || a0 > 247) {
+          out[y * w + x] = a0;
+          continue;
+        }
+        let sumA = 0, sumG = 0, sumAG = 0, sumGG = 0, cnt = 0;
+        for (let dy = -radius; dy <= radius; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -radius; dx <= radius; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) continue;
+            const a = alpha[yy * w + xx];
+            const g = gray[yy * w + xx];
+            sumA += a; sumG += g; sumAG += a * g; sumGG += g * g; cnt++;
+          }
+        }
+        const meanA = sumA / cnt;
+        const meanG = sumG / cnt;
+        const covAG = sumAG / cnt - meanA * meanG;
+        const varG = sumGG / cnt - meanG * meanG;
+        const a = covAG / (varG + eps);
+        const b = meanA - a * meanG;
+        out[y * w + x] = Math.max(0, Math.min(255, a * gray[y * w + x] + b));
+      }
+    }
+    return out;
+  }
+
+  function despillImageData(data, w, h) {
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const idx = (y * w + x) * 4;
+        const a = data[idx + 3];
+        if (a <= 12 || a >= 245) continue;
+        let r = data[idx], g = data[idx + 1], b = data[idx + 2];
+        if (b > r + 8 || b > g + 5) {
+          const excess = Math.max(0, b - Math.max(r, g));
+          b -= excess * 0.9;
+          r += excess * 0.22;
+          g += excess * 0.14;
+        }
+        if (g > r + 12 && g > b + 8) {
+          const excess = Math.max(0, g - Math.max(r, b));
+          g -= excess * 0.85;
+          r += excess * 0.15;
+          b += excess * 0.1;
+        }
+        const gray = (r + g + b) / 3;
+        data[idx] = r * 0.72 + gray * 0.28;
+        data[idx + 1] = g * 0.72 + gray * 0.28;
+        data[idx + 2] = b * 0.72 + gray * 0.28;
+      }
+    }
+  }
+
+  async function refineCutoutEdges(img) {
+    const c = canvasFromImage(img);
+    const t = c.getContext("2d", { willReadFrequently: true });
+    const imageData = t.getImageData(0, 0, c.width, c.height);
+    const data = imageData.data;
+    const w = c.width, h = c.height;
+    const n = w * h;
+
+    let alpha = new Float32Array(n);
+    const gray = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      alpha[i] = data[i * 4 + 3];
+      gray[i] = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+    }
+
+    alpha = openAlpha(alpha, w, h, 1);
+    alpha = erodeAlpha(alpha, w, h, 1);
+    alpha = blurAlpha(alpha, w, h, 2);
+    alpha = guidedSmoothAlpha(alpha, gray, w, h, 2, 60);
+
+    for (let i = 0; i < n; i++) {
+      data[i * 4 + 3] = Math.max(0, Math.min(255, Math.round(alpha[i])));
+    }
+    despillImageData(data, w, h);
+    t.putImageData(imageData, 0, 0);
+    return blobToImage(await new Promise(r => c.toBlob(r, "image/png")));
+  }
+
+  function sampleCornerColors(data, w, h) {
+    const pts = [
+      [2, 2], [w - 3, 2], [2, h - 3], [w - 3, h - 3],
+      [Math.floor(w * 0.15), 2], [Math.floor(w * 0.85), 2],
+      [2, Math.floor(h * 0.15)], [w - 3, Math.floor(h * 0.15)]
+    ];
+    const samples = pts.map(([x, y]) => {
+      const i = (y * w + x) * 4;
+      return [data[i], data[i + 1], data[i + 2]];
+    });
+    const med = [0, 1, 2].map(c => {
+      const arr = samples.map(s => s[c]).sort((a, b) => a - b);
+      return arr[Math.floor(arr.length / 2)];
+    });
+    let varSum = 0;
+    for (const s of samples) {
+      varSum += (s[0] - med[0]) ** 2 + (s[1] - med[1]) ** 2 + (s[2] - med[2]) ** 2;
+    }
+    return { color: med, purity: varSum / samples.length };
+  }
+
+  function chromaKeyCutout(img, threshold = 42) {
+    const c = canvasFromImage(img);
+    const t = c.getContext("2d", { willReadFrequently: true });
+    const imageData = t.getImageData(0, 0, c.width, c.height);
+    const data = imageData.data;
+    const w = c.width, h = c.height;
+    const { color: bg, purity } = sampleCornerColors(data, w, h);
+    if (purity > 900) return null;
+
+    const n = w * h;
+    let alpha = new Float32Array(n);
+    let fgCount = 0;
+    for (let i = 0; i < n; i++) {
+      const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
+      const dist = Math.sqrt((r - bg[0]) ** 2 + (g - bg[1]) ** 2 + (b - bg[2]) ** 2);
+      let a;
+      if (dist < threshold * 0.55) a = 0;
+      else if (dist > threshold * 1.35) a = 255;
+      else a = ((dist - threshold * 0.55) / (threshold * 0.8)) * 255;
+      alpha[i] = a;
+      if (a > 128) fgCount++;
+    }
+    const ratio = fgCount / n;
+    if (ratio < 0.08 || ratio > 0.92) return null;
+
+    alpha = openAlpha(alpha, w, h, 1);
+    alpha = erodeAlpha(alpha, w, h, 1);
+    alpha = blurAlpha(alpha, w, h, 2);
+    for (let i = 0; i < n; i++) {
+      data[i * 4 + 3] = Math.max(0, Math.min(255, Math.round(alpha[i])));
+    }
+    despillImageData(data, w, h);
+    t.putImageData(imageData, 0, 0);
+    return c;
+  }
+
+  async function handleFile(file) {
+    if (!file) return;
+    clearUrls();
+    currentFile = null;
+    cleanCutout = null;
+    workCanvas = null;
+    workCtx = null;
+    sourceCanvas = null;
+    if (refineMode) {
+      refineMode = false;
+      refinePanel.classList.remove("show");
+      normalPanel.style.display = "block";
+      refineBtn.textContent = "手动精修";
+    }
+    setEditPose(false);
+    try {
+      const raw = await loadImageFromFile(file);
+      const packed = await imageToPngFile(raw, PREVIEW_SIDE);
+      currentImg = packed.img;
+      currentFile = packed.file;
+      processBtn.disabled = false;
+      aiForceBtn.disabled = false;
+      refineBtn.disabled = true;
+      beautyLevel.value = 0;
+      beautyValue.textContent = "0";
+      resetCrop();
+      hideStatus();
+      modelBadge.textContent = "就绪";
+      modelBadge.classList.remove("bad");
+    } catch (_) {
+      showStatus("读取图片失败", "error");
+    }
+  }
+
+  document.getElementById("uploadAlbum").addEventListener("change", e => {
+    handleFile(e.target.files[0]);
+    e.target.value = "";
+  });
+  document.getElementById("uploadCamera").addEventListener("change", e => {
+    handleFile(e.target.files[0]);
+    e.target.value = "";
+  });
+
+  function setEditPose(on) {
+    editPose = on;
+    wrap.classList.toggle("editable", on && !refineMode);
+    canvasLock.textContent = refineMode ? "精修涂抹中" : (on ? "可拖动缩放" : "构图已锁定");
+    editPoseBtn.textContent = on ? "锁定构图" : "调整构图";
+    editPoseBtn.className = on ? "btn btn-primary" : "btn btn-ghost";
+  }
+  function toggleEditPose() {
+    if (refineMode) return;
+    setEditPose(!editPose);
+  }
+  window.toggleEditPose = toggleEditPose;
+
+  async function applyBeauty(img, level) {
+    if (level <= 3 || !img) return img;
+    const c = document.createElement("canvas");
+    c.width = img.width;
+    c.height = img.height;
+    const t = c.getContext("2d");
+    t.drawImage(img, 0, 0);
+    const s = level / 100;
+    t.filter = `blur(${1.6 + s * 3.2}px)`;
+    t.globalAlpha = 0.4 + s * 0.42;
+    t.drawImage(img, 0, 0);
+    t.filter = "none";
+    t.globalAlpha = 1;
+    const imageData = t.getImageData(0, 0, c.width, c.height);
+    const data = imageData.data;
+    const bright = 8 + s * 26;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 10) continue;
+      data[i] = Math.min(255, data[i] * 0.94 + bright);
+      data[i + 1] = Math.min(255, data[i + 1] * 0.94 + bright);
+      data[i + 2] = Math.min(255, data[i + 2] * 0.94 + bright * 0.9);
+    }
+    t.putImageData(imageData, 0, 0);
+    return blobToImage(await new Promise(r => c.toBlob(r, "image/png")));
+  }
+
+  async function applyBeautyRealtime(level) {
+    if (!workCanvas && !cleanCutout) return;
+    const base = workCanvas ? await canvasToImage(workCanvas) : cleanCutout;
+    currentImg = await applyBeauty(base, level);
+    draw();
+  }
+
+  function isOomError(err) {
+    return /out of memory|no available backend|RangeError|Failed to create session|wasm/i.test(String(err && (err.message || err)));
+  }
+
+  async function runAiCutout() {
+    let resultBlob = null;
+    let lastErr = null;
+    for (const side of AI_SIDES) {
+      try {
+        showProgress(12, `AI处理 ${side}px`);
+        const srcImg = await loadImageFromFile(currentFile);
+        const packed = await imageToPngFile(srcImg, side);
+        resultBlob = await removeBackground(packed.file, {
+          ...modelConfig(),
+          progress: (key, current, total) => {
+            if (!total) return;
+            showProgress(Math.min(88, 12 + Math.round((current / total) * 76)), `抠图 ${Math.round((current / total) * 100)}%`);
+          }
+        });
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (!isOomError(err)) break;
+      }
+    }
+    if (!resultBlob) throw lastErr || new Error("抠图失败");
+    return blobToImage(resultBlob);
+  }
+
+  async function processCurrent(forceAi = false) {
+    if (!currentFile || isProcessing) return;
+    isProcessing = true;
+    processBtn.disabled = true;
+    aiForceBtn.disabled = true;
+    setEditPose(false);
+    modelBadge.textContent = "处理中";
+    modelBadge.classList.remove("bad");
+    showStatus(forceAi ? "强制AI抠图…" : "正在抠图…", "loading");
+    showProgress(4, "准备");
+
+    try {
+      let cutout = null;
+      let method = "ai";
+
+      if (!forceAi) {
+        showProgress(8, "检测背景");
+        const srcImg = await loadImageFromFile(currentFile);
+        const packed = await imageToPngFile(srcImg, 900);
+        const fastCanvas = chromaKeyCutout(packed.img, 42);
+        if (fastCanvas) {
+          cutout = await canvasToImage(fastCanvas);
+          method = "fast";
+          showProgress(70, "纯色快抠完成");
+        }
+      }
+
+      if (!cutout) {
+        cutout = await runAiCutout();
+        method = "ai";
+      }
+
+      showProgress(92, "优化边缘");
+      cutout = await refineCutoutEdges(cutout);
+
+      cleanCutout = cutout;
+      currentImg = cutout;
+
+      workCanvas = document.createElement("canvas");
+      workCanvas.width = cutout.width;
+      workCanvas.height = cutout.height;
+      workCtx = workCanvas.getContext("2d", { willReadFrequently: true });
+      workCtx.drawImage(cutout, 0, 0);
+
+      sourceCanvas = document.createElement("canvas");
+      sourceCanvas.width = cutout.width;
+      sourceCanvas.height = cutout.height;
+      sourceCanvas.getContext("2d").drawImage(cutout, 0, 0);
+
+      beautyLevel.value = 0;
+      beautyValue.textContent = "0";
+      refineBtn.disabled = false;
+      resetCrop();
+      showProgress(100, "完成");
+      modelBadge.textContent = method === "fast" ? "快抠完成" : "就绪";
+      // 成功提示里带上手动精修引导
+      showStatus(
+        method === "fast"
+          ? "纯色快抠完成。效果不理想可用「手动精修」微调，或点强制AI精抠"
+          : "AI抠图完成。若边缘/衣物不完美，请用「手动精修」修复",
+        "success"
+      );
+      setTimeout(() => { hideStatus(); hideProgress(); }, 2800);
+    } catch (err) {
+      modelBadge.textContent = "失败";
+      modelBadge.classList.add("bad");
+      showStatus(isOomError(err) ? "内存不足，请关闭其他网页后重试" : ("抠图失败：" + (err.message || err)), "error");
+      hideProgress();
+    } finally {
+      isProcessing = false;
+      processBtn.disabled = false;
+      aiForceBtn.disabled = false;
+    }
+  }
+  window.processCurrent = processCurrent;
+
+  function toggleRefine() {
+    if (!workCanvas) return alert("请先完成抠图");
+    refineMode = !refineMode;
+    refinePanel.classList.toggle("show", refineMode);
+    normalPanel.style.display = refineMode ? "none" : "block";
+    setEditPose(false);
+    refineBtn.textContent = refineMode ? "精修中" : "手动精修";
+    if (refineMode) {
+      wrap.classList.add("editable");
+      canvasLock.textContent = "精修涂抹中";
+    } else {
+      wrap.classList.remove("editable");
+      canvasLock.textContent = "构图已锁定";
+      syncWorkToCurrent();
+    }
+    draw();
+  }
+  window.toggleRefine = toggleRefine;
+
+  function setRefineTool(tool) {
+    refineTool = tool;
+    document.getElementById("toolErase").className = "btn" + (tool === "erase" ? " btn-danger active" : "");
+    document.getElementById("toolRestore").className = "btn" + (tool === "restore" ? " btn-primary active" : "");
+    document.getElementById("toolDespill").className = "btn" + (tool === "despill" ? " btn-warn active" : "");
+  }
+  window.setRefineTool = setRefineTool;
+
+  async function syncWorkToCurrent() {
+    if (!workCanvas) return;
+    const level = +beautyLevel.value;
+    const base = await canvasToImage(workCanvas);
+    currentImg = level > 3 ? await applyBeauty(base, level) : base;
+    draw();
+  }
+
+  function previewToWork(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const px = (clientX - rect.left) / rect.width * currentSize.w;
+    const py = (clientY - rect.top) / rect.height * currentSize.h;
+    return {
+      x: (px - crop.x) / crop.scale,
+      y: (py - crop.y) / crop.scale
+    };
+  }
+
+  function paintAt(clientX, clientY) {
+    if (!workCtx || !refineMode) return;
+    const { x, y } = previewToWork(clientX, clientY);
+    const softR = Math.max(1.5, (+brushSize.value) / crop.scale * 0.9);
+
+    if (refineTool === "erase") {
+      const grad = workCtx.createRadialGradient(x, y, 0, x, y, softR);
+      grad.addColorStop(0, "rgba(0,0,0,1)");
+      grad.addColorStop(0.6, "rgba(0,0,0,0.75)");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      workCtx.save();
+      workCtx.globalCompositeOperation = "destination-out";
+      workCtx.fillStyle = grad;
+      workCtx.beginPath();
+      workCtx.arc(x, y, softR, 0, Math.PI * 2);
+      workCtx.fill();
+      workCtx.restore();
+    } else if (refineTool === "restore") {
+      const tmp = document.createElement("canvas");
+      tmp.width = workCanvas.width;
+      tmp.height = workCanvas.height;
+      const tc = tmp.getContext("2d");
+      tc.drawImage(sourceCanvas, 0, 0);
+      tc.globalCompositeOperation = "destination-in";
+      const grad = tc.createRadialGradient(x, y, 0, x, y, softR);
+      grad.addColorStop(0, "rgba(0,0,0,1)");
+      grad.addColorStop(0.65, "rgba(0,0,0,0.8)");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      tc.fillStyle = grad;
+      tc.beginPath();
+      tc.arc(x, y, softR, 0, Math.PI * 2);
+      tc.fill();
+      workCtx.drawImage(tmp, 0, 0);
+    } else if (refineTool === "despill") {
+      const x0 = Math.max(0, Math.floor(x - softR - 1));
+      const y0 = Math.max(0, Math.floor(y - softR - 1));
+      const x1 = Math.min(workCanvas.width, Math.ceil(x + softR + 1));
+      const y1 = Math.min(workCanvas.height, Math.ceil(y + softR + 1));
+      const bw = x1 - x0, bh = y1 - y0;
+      if (bw <= 0 || bh <= 0) return;
+      const imageData = workCtx.getImageData(x0, y0, bw, bh);
+      const data = imageData.data;
+      for (let j = 0; j < bh; j++) {
+        for (let i = 0; i < bw; i++) {
+          const dist = Math.hypot(x0 + i - x, y0 + j - y);
+          if (dist > softR) continue;
+          const strength = 1 - dist / softR;
+          const idx = (j * bw + i) * 4;
+          if (data[idx + 3] < 8) continue;
+          let r0 = data[idx], g0 = data[idx + 1], b0 = data[idx + 2];
+          if (b0 > r0 + 5 || b0 > g0 + 3) {
+            const excess = Math.max(0, b0 - Math.max(r0, g0)) * strength * 1.2;
+            b0 = Math.max(0, b0 - excess);
+            r0 = Math.min(255, r0 + excess * 0.22);
+            g0 = Math.min(255, g0 + excess * 0.15);
+          }
+          if (g0 > r0 + 10 && g0 > b0 + 6) {
+            const excess = Math.max(0, g0 - Math.max(r0, b0)) * strength * 1.1;
+            g0 = Math.max(0, g0 - excess);
+            r0 = Math.min(255, r0 + excess * 0.15);
+            b0 = Math.min(255, b0 + excess * 0.1);
+          }
+          const gray = (r0 + g0 + b0) / 3;
+          const mix = 0.4 * strength;
+          data[idx] = r0 * (1 - mix) + gray * mix;
+          data[idx + 1] = g0 * (1 - mix) + gray * mix;
+          data[idx + 2] = b0 * (1 - mix) + gray * mix;
+        }
+      }
+      workCtx.putImageData(imageData, x0, y0);
+    }
+    draw();
+  }
+
+  function changeSize() {
+    currentSize = sizes[sizeSelect.value];
+    sizeInfo.textContent = `${currentSize.name} · ${currentSize.w}×${currentSize.h}`;
+    updatePaperInfo();
+    resetCrop();
+  }
+  window.changeSize = changeSize;
+
+  function calcFitCount() {
+    const paper = papers[paperSelect.value];
+    const photo = currentSize;
+    const gap = 3, margin = 5;
+    return Math.max(1,
+      Math.floor((paper.w - margin * 2 + gap) / (photo.mmW + gap)) *
+      Math.floor((paper.h - margin * 2 + gap) / (photo.mmH + gap))
+    );
+  }
+  function updatePaperInfo() {
+    paperInfo.textContent = `预计可排 ${calcFitCount()} 张 · ${papers[paperSelect.value].name}`;
+  }
+  window.updatePaperInfo = updatePaperInfo;
+
+  function setBg(color) {
+    bgColor = color;
+    document.getElementById("customBg").value = color;
+    draw();
+  }
+  window.setBg = setBg;
+
+  function activeSource() {
+    if (refineMode && workCanvas) return workCanvas;
+    if (currentImg) return currentImg;
+    return workCanvas;
+  }
+
+  function resetCrop() {
+    const src = activeSource();
+    const imgW = (src && src.width) || 1;
+    const imgH = (src && src.height) || 1;
+    const scale = Math.max(currentSize.w / imgW, currentSize.h / imgH) * 1.02;
+    crop.scale = scale;
+    crop.x = (currentSize.w - imgW * scale) / 2;
+    const fullCenterY = (currentSize.h - imgH * scale) / 2;
+    crop.y = fullCenterY * 0.25;
+    if (crop.y > 0) crop.y = 0;
+    draw();
+  }
+  window.resetCrop = resetCrop;
+
+  function draw() {
+    canvas.width = currentSize.w;
+    canvas.height = currentSize.h;
+    fitCanvasDisplay();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!currentImg && !workCanvas) {
+      ctx.fillStyle = "#f5f8fc";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#9aa8bf";
+      ctx.font = "15px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("请选择照片", canvas.width / 2, canvas.height / 2);
+      return;
+    }
+
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const src = activeSource();
+    if (!src) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, canvas.height);
+    ctx.clip();
+    ctx.drawImage(src, crop.x, crop.y, src.width * crop.scale, src.height * crop.scale);
+    ctx.restore();
+  }
+
+  function onPointerDown(clientX, clientY, isTouch, touchCount) {
+    if (refineMode) {
+      isPainting = true;
+      isDragging = false;
+      paintAt(clientX, clientY);
+      return;
+    }
+    if (!editPose) return;
+    if (isTouch && touchCount === 2) {
+      isDragging = false;
+      return;
+    }
+    isDragging = true;
+    lastTouch = { x: clientX, y: clientY };
+  }
+
+  function onPointerMove(clientX, clientY, isTouch, touchCount, touches) {
+    if (refineMode && isPainting) {
+      paintAt(clientX, clientY);
+      return;
+    }
+    if (refineMode || !editPose) return;
+    if (isTouch && touchCount === 2 && touches) {
+      const dist = Math.hypot(
+        touches[0].clientX - touches[1].clientX,
+        touches[0].clientY - touches[1].clientY
+      );
+      if (lastDist) crop.scale *= dist / lastDist;
+      lastDist = dist;
+      draw();
+      return;
+    }
+    if (isDragging && lastTouch) {
+      const rect = canvas.getBoundingClientRect();
+      crop.x += (clientX - lastTouch.x) * (currentSize.w / rect.width);
+      crop.y += (clientY - lastTouch.y) * (currentSize.h / rect.height);
+      lastTouch = { x: clientX, y: clientY };
+      draw();
+    }
+  }
+
+  function onPointerUp() {
+    isDragging = false;
+    isPainting = false;
+    lastDist = 0;
+  }
+
+  wrap.addEventListener("touchstart", e => {
+    if (!refineMode && !editPose) return;
+    e.preventDefault();
+    if (e.touches.length === 2) {
+      lastDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    }
+    onPointerDown(e.touches[0].clientX, e.touches[0].clientY, true, e.touches.length);
+  }, { passive: false });
+
+  wrap.addEventListener("touchmove", e => {
+    if (!refineMode && !editPose) return;
+    e.preventDefault();
+    onPointerMove(e.touches[0].clientX, e.touches[0].clientY, true, e.touches.length, e.touches);
+  }, { passive: false });
+
+  wrap.addEventListener("touchend", onPointerUp);
+  wrap.addEventListener("touchcancel", onPointerUp);
+
+  wrap.addEventListener("mousedown", e => {
+    if (!refineMode && !editPose) return;
+    e.preventDefault();
+    onPointerDown(e.clientX, e.clientY, false, 1);
+  });
+  window.addEventListener("mousemove", e => {
+    if (!isPainting && !isDragging) return;
+    onPointerMove(e.clientX, e.clientY, false, 1);
+  });
+  window.addEventListener("mouseup", onPointerUp);
+
+  function downloadCurrent() {
+    if (!currentImg && !workCanvas) return alert("请先处理照片");
+    draw();
+    const a = document.createElement("a");
+    a.download = `证件照_${sizeSelect.value}.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  }
+  window.downloadCurrent = downloadCurrent;
+
+  function generatePrintSheet() {
+    if (!currentImg && !workCanvas) return alert("请先处理照片");
+    draw();
+    const paper = papers[paperSelect.value];
+    const photo = currentSize;
+    const gapMm = 3, marginMm = 5, dpi = 300, mmToPx = dpi / 25.4;
+    const paperW = Math.round(paper.w * mmToPx);
+    const paperH = Math.round(paper.h * mmToPx);
+    const photoW = photo.w;
+    const photoH = photo.h;
+    const gap = Math.round(gapMm * mmToPx);
+    const margin = Math.round(marginMm * mmToPx);
+    const cols = Math.floor((paperW - margin * 2 + gap) / (photoW + gap));
+    const rows = Math.floor((paperH - margin * 2 + gap) / (photoH + gap));
+    const total = Math.max(1, cols * rows);
+    const sheet = document.createElement("canvas");
+    sheet.width = paperW;
+    sheet.height = paperH;
+    const s = sheet.getContext("2d");
+    s.fillStyle = "#ffffff";
+    s.fillRect(0, 0, paperW, paperH);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        s.drawImage(canvas, margin + c * (photoW + gap), margin + r * (photoH + gap), photoW, photoH);
+      }
+    }
+    const a = document.createElement("a");
+    a.download = `证件照_${paper.name}_${total}张.png`;
+    a.href = sheet.toDataURL("image/png");
+    a.click();
+    showStatus(`已生成 ${paper.name} · ${total} 张`, "success");
+    setTimeout(hideStatus, 1200);
+  }
+  window.generatePrintSheet = generatePrintSheet;
+
+  changeSize();
+  updatePaperInfo();
+</script>
+</body>
+</html>
